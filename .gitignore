@@ -10,3 +10,11 @@ wheels/
 .venv
 uv.lock
 *.npy
+
+# Other Files
+__MACOSX
+**Sounds**
+**.lprof
+**cat_images**
+**template**
+**Spectrograms**

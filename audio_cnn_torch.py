@@ -20,6 +20,7 @@
 import numpy as np
 import librosa.display, os
 import matplotlib.pyplot as plt
+from line_profiler import profile
 # %%matplotlib inline
 
 def create_spectrogram(audio_file, image_file):
@@ -44,6 +45,8 @@ def create_pngs_from_wavs(input_path, output_path):
     for i, file in enumerate(dir):
         input_file = os.path.join(input_path, file)
         output_file = os.path.join(output_path, file.replace('.wav', '.png'))
+        if os.path.exists(output_file):
+            continue
         create_spectrogram(input_file, output_file)
 
 # %% [markdown]
@@ -105,7 +108,7 @@ show_images(images)
 x += images
 y += labels
 
-# %% [markdown]
+# %% [markdown]|
 # Load the chainsaw spectrogram images, add them to the list named `x`, and label them with 1s.
 
 # %%
@@ -150,6 +153,7 @@ x_test_norm = np.array(x_test) / 255
 y_train_encoded = to_categorical(y_train)
 y_test_encoded = to_categorical(y_test)
 
+"""
 # %%
 import torch
 import torch.nn as nn
@@ -195,8 +199,24 @@ class MyModel(nn.Module):
 
 model = MyModel(num_classes=4)
 print(model)
+sum(p.numel() for p in model.parameters())
 
-
+#%%
+from prettytable import PrettyTable
+def count_parameters(model):
+    table = PrettyTable(["Modules", "Parameters"])
+    total_params = 0
+    for name, parameter in model.named_parameters():
+        if not parameter.requires_grad:
+            continue
+        params = parameter.numel()
+        table.add_row([name, params])
+        total_params += params
+    print(table)
+    print(f"Total Trainable Params: {total_params}")
+    return total_params
+    
+count_parameters(model)
 
 # %%
 import torch
@@ -227,7 +247,7 @@ model = MyModel()  # Ensure MyModel is defined as before
 criterion = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu", 1)
 model.to(device)
 
 epochs = 10
@@ -274,6 +294,8 @@ for epoch in range(epochs):
           f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}")
 
 
+"""
+
 # %%
 import torch
 import torch.nn as nn
@@ -300,7 +322,7 @@ class MyModelFFT(nn.Module):
         # Flatten size = 128 * 14 * 14 = 25088
         self.fc1 = nn.Linear(128 * 14 * 14, 1024)
         self.fc2 = nn.Linear(1024, num_classes)
-
+    @profile
     def forward(self, x):
         # Forward pass using fft-based convolutions
         x = F.relu(self.conv1(x))
@@ -329,12 +351,21 @@ criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 
+
 # %%
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
 import numpy as np
 
+import os
+
+# os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+# print("Using legacy Keras:", os.getenv("CUDA_VISIBLE_DEVICES") == "1")
+
+#%%
+sum(p.numel() for p in model.parameters())
+#%%
 # Assuming x_train_norm, y_train_encoded, x_test_norm, and y_test_encoded are numpy arrays
 # Convert one-hot encoded labels to class indices
 y_train_indices = np.argmax(y_train_encoded, axis=1)
@@ -358,15 +389,16 @@ model = MyModelFFT(num_classes=4)  # Ensure MyModel is defined as before
 criterion = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu", 1)
 model.to(device)
 
+#%%
 epochs = 10
-for epoch in range(epochs):
-    model.train()
+
+@profile
+def loss_calculation(train_loader):
     train_loss = 0.0
     correct_train = 0
-
     for inputs, labels in train_loader:
         inputs, labels = inputs.to(device), labels.to(device)
 
@@ -378,6 +410,16 @@ for epoch in range(epochs):
 
         train_loss += loss.item() * inputs.size(0)
         correct_train += (outputs.argmax(1) == labels).sum().item()
+    return train_loss, correct_train
+
+@profile
+def train(model):
+    model.train()
+    return model
+
+for epoch in range(epochs):
+    model = train(model)
+    train_loss, correct_train = loss_calculation(train_loader)
 
     train_loss /= len(train_loader.dataset)
     train_accuracy = correct_train / len(train_loader.dataset)
@@ -406,3 +448,5 @@ for epoch in range(epochs):
 
 
 
+
+# %%
