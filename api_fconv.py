@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 def load_real_samples(scale=False):
     # We load 20,000 samples only to avoid memory issues, you can  change this value
-    X = np.load('cats_images_64x64.npy',  fix_imports=True,encoding='latin1')[:20000, :, :, :]
+    X = np.load('images_64x64.npy',  fix_imports=True,encoding='latin1')[:20000, :, :, :]
     # Scale samples in range [-127, 127]
     if scale:
         X = (X - 127.5) * 2
@@ -198,10 +198,21 @@ kernel = weights[0][:,:,0,10]
 bias = biases[0][10]
 image = dataset[666]
 channel = image[:,:,0]
+tfft = []
+tconv = []
+from time import perf_counter as tick
+for _ in tqdm(range(1_000)):
+    t0 = tick()
+    fft_image = bias + convolve_fft(channel, kernel)
+    t1 = tick()
+    spatial_image = bias + convolve2d(channel, kernel, mode='same')
+    t2 = tick()
+    tfft.append(t1-t0)
+    tconv.append(t2-t1)
 
-fft_image = bias + convolve_fft(channel, kernel)
-spatial_image = bias + convolve2d(channel, kernel, mode='same')
 diff = fft_image-spatial_image
+print(f"TIME: conv: {1000*np.mean(tconv):.2f} fftconv: {1000*np.mean(tfft):.2f}")
+print(f"DEVIATION: conv: {1000*np.std(tconv):.2f} fftconv: {1000*np.std(tfft):.2f}")
 for i in range(3):
     plot_diff(weights[0][:,:,i,10],image[:,:,i])
 #%%
