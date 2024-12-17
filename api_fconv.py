@@ -201,14 +201,16 @@ channel = image[:,:,0]
 tfft = []
 tconv = []
 from time import perf_counter as tick
-for _ in tqdm(range(1_000)):
-    t0 = tick()
-    fft_image = bias + convolve_fft(channel, kernel)
-    t1 = tick()
-    spatial_image = bias + convolve2d(channel, kernel, mode='same')
-    t2 = tick()
-    tfft.append(t1-t0)
-    tconv.append(t2-t1)
+for i in tqdm(range(dataset.shape[0])):
+    for color in range(3):
+        channel = dataset[i][:,:,color]
+        t0 = tick()
+        fft_image = bias + convolve_fft(channel, kernel)
+        t1 = tick()
+        spatial_image = bias + convolve2d(channel, kernel, mode='same')
+        t2 = tick()
+        tfft.append(t1-t0)
+        tconv.append(t2-t1)
 
 diff = fft_image-spatial_image
 print(f"TIME: conv: {1000*np.mean(tconv):.2f} fftconv: {1000*np.mean(tfft):.2f}")
