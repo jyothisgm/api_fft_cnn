@@ -157,41 +157,8 @@ biases = [l.get_weights()[1] for l in conv_layers]
 #%%
 import matplotlib.pyplot as plt
 
-def plot_diff(kernel,channel):
-    input_tensor = image
-    fft_image = convolve_fft(channel,kernel)
-    spatial_image = convolve2d(channel,kernel,mode='same')
-    diff = fft_image-spatial_image
-    # Plot the results
-    plt.figure(figsize=(15, 5))
 
-    # Original image in RGB
-    plt.subplot(1, 4, 1)
-    plt.imshow(input_tensor)  # Display as RGB
-    plt.title("Original Image ")
-    plt.axis('off')
-
-    # FFT-based convolution result
-    plt.subplot(1, 4, 2)
-    plt.imshow(fft_image, cmap='gray')  # Grayscale for single-channel output
-    plt.title("FFT-based Convolution")
-    plt.axis('off')
-
-    # Spatial convolution result
-    plt.subplot(1, 4, 3)
-    plt.imshow(spatial_image, cmap='gray')  # Grayscale for single-channel output
-    plt.title("Spatial Convolution")
-    plt.axis('off')
-
-    plt.subplot(1, 4, 4)
-    plt.imshow(diff, cmap='gray')  # Grayscale for single-channel output
-    plt.title("Diff")
-    plt.axis('off')
-
-    plt.tight_layout()
-    plt.show()
-
-
+#%%
 # choose image and kernel
 # from layer 0 get all x and y for channel 0 for neuron 10
 kernel = weights[0][:,:,0,10]
@@ -215,8 +182,52 @@ for i in tqdm(range(dataset.shape[0])):
 diff = fft_image-spatial_image
 print(f"TIME: conv: {1000*np.mean(tconv):.2f} fftconv: {1000*np.mean(tfft):.2f}")
 print(f"DEVIATION: conv: {1000*np.std(tconv):.2f} fftconv: {1000*np.std(tfft):.2f}")
+#%%
+def plot_diff(kernel,channel,axes,n):
+    input_tensor = image
+    fft_image = convolve_fft(channel,kernel)
+    spatial_image = convolve2d(channel,kernel,mode='same')
+    diff = fft_image-spatial_image
+    # Plot the results
+    plt.figure(figsize=(15, 5))
+
+    # Original image in RGB
+    ax = axes[n,0]
+    ax.imshow(input_tensor)  # Display as RGB
+    if i==0:
+        ax.set_title("Original Image ")
+    ax.set_ylabel(f'Neuron 10 \nKernel {i}',rotation=90)
+    ax.set_yticklabels([])
+    
+    # ax.spines['left'].set_visible(False)
+    ax.xaxis.set_visible(False)
+
+    # FFT-based convolution result
+    ax = axes[n,1]
+    ax.imshow(fft_image, cmap='gray')  # Grayscale for single-channel output
+    if i==0:
+        ax.set_title("FFT-based")
+    ax.axis('off')
+
+    # Spatial convolution result
+    ax = axes[n,2]
+    ax.imshow(spatial_image, cmap='gray')  # Grayscale for single-channel output
+    if i==0:
+        ax.set_title("Spatial")
+    ax.axis('off')
+
+    ax = axes[n,3]
+    # ax.subplot(3,4, 4*n+4)
+    ax.imshow(diff, cmap='gray')  # Grayscale for single-channel output
+    if i==0:
+        ax.set_title("Diff")
+    ax.axis('off')
+    # plt.tight_layout()
+    # plt.show()
+fig,axes = plt.subplots(3,4)
 for i in range(3):
-    plot_diff(weights[0][:,:,i,10],image[:,:,i])
+    plot_diff(weights[0][:,:,i,10],image[:,:,i],axes,i)
+fig.savefig('cats.png')
 #%%
 
 def fft_convolve_layer(input_tensor, kernels):
@@ -235,3 +246,5 @@ def fft_convolve_layer(input_tensor, kernels):
     
     return output
 
+
+# %%
